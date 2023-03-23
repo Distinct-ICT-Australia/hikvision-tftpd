@@ -1,41 +1,71 @@
-Unbrick a Hikvision device. Use as follows:
+# Introduction
 
-Setup the expected IP address:
+Factory reset a Hikvision NVR or Camera over the a network.
+Useful for when:
 
-    linux$ sudo ifconfig eth0:0 192.0.0.128
-    osx$   sudo ifconfig en0 alias 192.0.0.128 255.255.255.0
+1. NVR has bricked itself when doing a firmware upgrade. Or for whatever else reason...
+2. Cameras are unavailable due to being locked by a password.
 
-Download the firmware to use:
+## Support
 
-    $ curl -o digicap.dav <url of firmware>
+The below tables shows when the tool was last tested.
 
-Run the script:
+| Windows    | MacOS      | Linux      |
+| ---------- | ---------- | ---------- |
+| 2023-03-22 | 2023-03-22 | 2023-03-02 |
 
-    $ sudo ./hikvision_tftpd.py
+If you require further assistant please reach out to [support@distinctict.com.au](mailto:support@distinctict.com.au).
 
-Hit ctrl-C when done.
+## Script Setup Steps
 
-The Hikvision TFTP handshake (for both cameras and NVRs) is stupid but easy
-enough. The client sends a particular packet to the server's port 9978 from
-the client port 9979 and expects the server to echo it back.  Once that
-happens, it proceeds to send a tftp request (on the standard tftp port, 69)
-for a specific file, which it then installs. The tftp server must reply
-from port 69 (unlike the tftpd package that comes with Debian).
+1. Download Python 2.7 
+2. Clone this repository.
+3. Collect your digicap firmware version: `curl -o digicap.dav <url_of_firmware>`.
+4. Ensure the digicap file is in your working directory.
+
+## System Configuration (SERVER, not NVR or Camera)
+
+### Context
+
+The client (NVR or Camera) sends a particular packet to the server's port 9978 from the clients port 9979 and expects the server to echo it back. Once that happens, it proceeds to send a TFTP request over port 69 for a specific file, which the client will then install. The TFTP Server must reply from port 69.
 
 This script handles both the handshake and the actual TFTP transfer.
-The TFTP server is very simple but appears to be good enough.
 
-Note the expected IP addresses and file name appear to differ by model. So far
-there are two known configurations:
+Note the expected IP Addresses and file name are different based on the model. Currently there are two known configurations, please submit a PR if you identify additional.
 
 | client IP    | server IP    | filename      |
 | ------------ | ------------ | ------------- |
 | 192.0.0.64   | 192.0.0.128  | `digicap.dav` |
 | 172.9.18.100 | 172.9.18.80  | `digicap.mav` |
 
-This program defaults to the former. The latter requires commandline overrides:
+The script defaults to 192.0.0.128, below we define how to change to a different Server IP.
 
-    $ sudo ./hikvision_tftp.py --server-ip=172.9.18.80 --filename=digicap.mav
+### Ethernet Adapter
+
+1. Connect your device directly to the client via ethernet.
+2. Adjust your ethernet adapters settings to reflect the following. If your client IP reflect a `172` address, change the IPv4 field to `172.9.18.80`.
+	| IPv4        | Subnet Mask   | Gateway         |
+	| ----------- | ------------- | --------------- |
+	| 192.0.0.128 | 255.255.255.0 | 0.0.0.0 (blank) |
+
+## Execution process (Default)
+
+1. Launch the server:
+- Windows: `python hikvision_tftp.py`.
+- MacOS & Linux: `sudo ./hikvision_tftpd.py`.
+2. Restart the client.
+3. Once the client reboots, you should see a transfer from the server start to print into the servers console. 
+4. Once the transfer is complete you can close the script. 
+
+## Execution process (Other server IPs)
+
+1. Launch the server
+- Windows: `python hikvision_tftp.py --server-ip=172.9.18.88 --filename=digicap.mav`
+2. Restart the client.
+3. Once the client reboots, you should see a transfer from the server start to print into the servers console. 
+4. Once the transfer is complete you can close the script. 
+
+Now leave the device to perform a factory reset. It may reboot a number of times, do not interfere with the process until it is clearly complete.
 
 If nothing happens when your device restarts, your device may be expecting
 another IP address. tcpdump may be helpful in diagnosing this:
@@ -47,4 +77,3 @@ another IP address. tcpdump may be helpful in diagnosing this:
 
 Feel free to open an issue for help.
 
-See [discussion thread](https://www.ipcamtalk.com/showthread.php/3647-Hikvision-DS-2032-I-Console-Recovery).
